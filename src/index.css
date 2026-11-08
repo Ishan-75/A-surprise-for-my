@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Taylor Swift & Lana Del Rey Inspired Palette */
+    --color-bg-deep: #090614;                 /* Midnight Indigo Velvet */
+    --color-bg-card: rgba(22, 14, 38, 0.68);
+    --color-rose-taylor: #ea9ab2;             /* "Lover" Dusty Romantic Rose */
+    --color-cherry-lana: #b82e4f;             /* "Born To Die" Cherry Wine Velvet */
+    --color-lavender-haze: #c8b6ff;           /* "Midnights" Lavender Haze */
+    --color-champagne-gold: #fae19c;          /* "Champagne Problems" Golden Starlight */
+    --color-ocean-mist: #80b6b2;              /* "West Coast" Vintage Ocean Mist */
+    --color-parchment: #fcf7f2;               /* Vintage Love Letter Parchment */
+    
+    --glow-rose: 0 0 24px rgba(234, 154, 178, 0.4);
+    --glow-cherry: 0 0 28px rgba(184, 46, 79, 0.35);
+    --glow-lavender: 0 0 26px rgba(200, 182, 255, 0.35);
+    --glow-champagne: 0 0 22px rgba(250, 225, 156, 0.38);
+  }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--color-bg-deep);
+    color: #f7f3f6;
+    overflow-x: hidden;
+  }
+}
+
+/* Taylor & Lana Album Typography */
+.font-album {
+  font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
+  letter-spacing: -0.015em;
+}
+
+.font-poetic {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-arcade {
+  font-family: 'Press Start 2P', monospace;
+}
+
+.font-terminal {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.font-cyber {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.font-handwriting {
+  font-family: 'Caveat', cursive;
+}
+
+/* Dreamy Cinematic Glassmorphism */
+.glass-panel {
+  background: rgba(20, 13, 34, 0.65);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(234, 154, 178, 0.16);
+  box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(250, 225, 156, 0.12);
+}
+
+.glass-card {
+  background: linear-gradient(135deg, rgba(234, 154, 178, 0.08) 0%, rgba(200, 182, 255, 0.03) 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(234, 154, 178, 0.14);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.55);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(234, 154, 178, 0.45);
+  box-shadow: 0 16px 38px -10px rgba(184, 46, 79, 0.3), inset 0 0 18px rgba(234, 154, 178, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Soft Poetic Glows */
+.glow-pink, .glow-rose {
+  box-shadow: 0 0 25px rgba(234, 154, 178, 0.45);
+}
+
+.glow-cherry {
+  box-shadow: 0 0 28px rgba(184, 46, 79, 0.4);
+}
+
+.glow-lavender {
+  box-shadow: 0 0 28px rgba(200, 182, 255, 0.4);
+}
+
+.glow-gold {
+  box-shadow: 0 0 25px rgba(250, 225, 156, 0.4);
+}
+
+.text-glow-rose {
+  text-shadow: 0 0 14px rgba(234, 154, 178, 0.65), 0 0 28px rgba(184, 46, 79, 0.3);
+}
+
+.text-glow-gold {
+  text-shadow: 0 0 12px rgba(250, 225, 156, 0.7), 0 0 26px rgba(244, 208, 111, 0.3);
+}
+
+.text-glow-lavender {
+  text-shadow: 0 0 14px rgba(200, 182, 255, 0.65), 0 0 28px rgba(184, 164, 240, 0.3);
+}
+
+/* Custom Vintage Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090614;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #25163a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ea9ab2;
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1.2deg);
+  }
+}
+
+@keyframes pulseSlow {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes heartBeat {
+  0% { transform: scale(1); }
+  14% { transform: scale(1.12); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.18); }
+  70% { transform: scale(1); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 4.5s ease-in-out infinite;
+}
+
+.animate-heartbeat {
+  animation: heartBeat 2s ease-in-out infinite;
+}
+
+/* Film / Vinyl Grain & CRT Scanline */
+.crt-overlay {
+  background: linear-gradient(rgba(20, 16, 24, 0) 50%, rgba(0, 0, 0, 0.22) 50%), linear-gradient(90deg, rgba(234, 154, 178, 0.02), rgba(0, 0, 0, 0.01), rgba(200, 182, 255, 0.02));
+  background-size: 100% 3px, 6px 100%;
+  pointer-events: none;
+}
+
+/* Touch and accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
