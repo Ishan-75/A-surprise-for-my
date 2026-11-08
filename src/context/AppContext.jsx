@@ -53,9 +53,9 @@ export const AppProvider = ({ children }) => {
     } catch {}
   };
 
-  // 3. Audio & SFX settings
+  // 3. Audio & SFX settings (Autoplay enabled by default)
   const [sfxEnabled, setSfxEnabled] = useState(true);
-  const [musicPlaying, setMusicPlaying] = useState(false);
+  const [musicPlaying, setMusicPlaying] = useState(true);
   const [volume, setVolumeState] = useState(0.7);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [audioError, setAudioError] = useState(null);

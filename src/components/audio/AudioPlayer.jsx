@@ -60,7 +60,7 @@ export const AudioPlayer = () => {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // Load the audio source once and initialize volume
+  // Load the audio source once and trigger autoplay immediately
   useEffect(() => {
     if (!audioRef.current) return;
     audioRef.current.volume = volume;
@@ -72,11 +72,10 @@ export const AudioPlayer = () => {
       audioRef.current.load();
     }
 
-    if (musicPlaying && audioRef.current.paused) {
+    // Attempt immediate autoplay on initial render
+    if (musicPlaying) {
       audioRef.current.play().catch((err) => {
-        if (err.name !== 'NotAllowedError') {
-          console.warn('Audio playback error', err);
-        }
+        // Browser might restrict sound until first interaction; interaction listeners handle this silently
       });
     }
   }, [currentTrack?.src]);
@@ -88,35 +87,34 @@ export const AudioPlayer = () => {
 
     if (musicPlaying) {
       if (audioRef.current.paused) {
-        audioRef.current.play().catch((err) => {
-          if (err.name !== 'NotAllowedError') {
-            console.warn('Playback error', err);
-          }
-        });
+        audioRef.current.play().catch(() => {});
       }
     } else {
       audioRef.current.pause();
     }
   }, [musicPlaying, volume]);
 
-  // Window interaction listener to ensure audio starts and never gets blocked
+  // Universal interaction listeners: any tap, touch, click, scroll or keypress activates playback automatically
   useEffect(() => {
     if (!musicPlaying) return;
 
-    const ensurePlaying = () => {
+    const ensureAutoplay = () => {
       if (audioRef.current && audioRef.current.paused && musicPlaying) {
         audioRef.current.play().catch(() => {});
       }
     };
 
-    window.addEventListener('click', ensurePlaying, { passive: true });
-    window.addEventListener('touchstart', ensurePlaying, { passive: true });
-    window.addEventListener('keydown', ensurePlaying, { passive: true });
+    // Try immediately
+    ensureAutoplay();
+
+    // Broad set of interaction events so no specific button click is required
+    const events = ['click', 'touchstart', 'touchend', 'pointerdown', 'mousedown', 'keydown', 'wheel', 'scroll'];
+    events.forEach((ev) => window.addEventListener(ev, ensureAutoplay, { passive: true }));
+    events.forEach((ev) => document.addEventListener(ev, ensureAutoplay, { passive: true }));
 
     return () => {
-      window.removeEventListener('click', ensurePlaying);
-      window.removeEventListener('touchstart', ensurePlaying);
-      window.removeEventListener('keydown', ensurePlaying);
+      events.forEach((ev) => window.removeEventListener(ev, ensureAutoplay));
+      events.forEach((ev) => document.removeEventListener(ev, ensureAutoplay));
     };
   }, [musicPlaying]);
 
@@ -137,10 +135,16 @@ export const AudioPlayer = () => {
     <>
       <audio
         ref={audioRef}
+        autoPlay
         loop={true}
         preload="auto"
         onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
-        onLoadedMetadata={(e) => setDuration(e.target.duration)}
+        onLoadedMetadata={(e) => {
+          setDuration(e.target.duration);
+          if (musicPlaying && audioRef.current && audioRef.current.paused) {
+            audioRef.current.play().catch(() => {});
+          }
+        }}
         onEnded={() => {
           // Continuous loop guarantee: rewind and keep playing!
           if (audioRef.current) {
