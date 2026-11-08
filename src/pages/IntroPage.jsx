@@ -8,7 +8,7 @@ import sound from '../utils/soundEffects';
 
 export const IntroPage = () => {
   const navigate = useNavigate();
-  const { siteConfig, setHasSeenIntro, unlockAchievement, discoverSecret } = useApp();
+  const { siteConfig, setHasSeenIntro, unlockAchievement, discoverSecret, startMusic } = useApp();
 
   // Scene state: 1 = Boot, 2 = Error 404, 3 = Heart Portal, 4 = Personal Welcome
   const [scene, setScene] = useState(1);
@@ -59,6 +59,7 @@ export const IntroPage = () => {
 
   // Enter Universe
   const handleEnterUniverse = () => {
+    startMusic();
     sound.playAchievement();
     setHasSeenIntro(true);
     unlockAchievement('ach-first-boot');
@@ -67,6 +68,7 @@ export const IntroPage = () => {
 
   // Discover Secret Button
   const handleDiscoverSecret = () => {
+    startMusic();
     sound.playSecret();
     discoverSecret('egg-konami-lover-mode');
     setHasSeenIntro(true);
@@ -76,6 +78,7 @@ export const IntroPage = () => {
 
   // Skip Intro
   const handleSkip = () => {
+    startMusic();
     sound.playClick();
     setHasSeenIntro(true);
     unlockAchievement('ach-first-boot');

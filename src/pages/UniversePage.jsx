@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   Gamepad2, 
@@ -23,8 +23,17 @@ export const UniversePage = () => {
     discoverSecret, 
     unlockAchievement,
     arcadeHighScore,
-    unlockedSurprises
+    unlockedSurprises,
+    startMusic,
+    musicPlaying
   } = useApp();
+
+  // Automatically start the soundtrack when entering the Universe
+  useEffect(() => {
+    if (!musicPlaying) {
+      startMusic();
+    }
+  }, [musicPlaying, startMusic]);
 
   // Easter Egg 2: "DO NOT PRESS" Button state
   const [panicClicks, setPanicClicks] = useState(0);

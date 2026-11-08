@@ -365,6 +365,14 @@ export const AppProvider = ({ children }) => {
     sound.setVolume(val);
   };
 
+  const startMusic = () => {
+    const currentTrack = playlist[currentTrackIndex];
+    if (currentTrack?.type === 'synth') {
+      sound.startAmbientMusic();
+    }
+    setMusicPlaying(true);
+  };
+
   const toggleMusic = () => {
     const currentTrack = playlist[currentTrackIndex];
     if (musicPlaying) {
@@ -459,6 +467,7 @@ export const AppProvider = ({ children }) => {
         toggleSfx,
         musicPlaying,
         setMusicPlaying,
+        startMusic,
         toggleMusic,
         volume,
         setVolume,

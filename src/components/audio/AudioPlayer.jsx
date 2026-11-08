@@ -4,14 +4,11 @@ import {
   VolumeX, 
   Play, 
   Pause, 
-  SkipForward, 
-  SkipBack, 
   Music, 
   Sparkles, 
   ChevronUp, 
   ChevronDown,
-  Repeat, 
-  ListMusic
+  Repeat
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import sound from '../../utils/soundEffects';
@@ -23,29 +20,32 @@ export const AudioPlayer = () => {
     volume,
     setVolume,
     currentTrackIndex,
-    changeTrack,
-    selectTrack,
     playlist,
     sfxEnabled,
     toggleSfx
   } = useApp();
 
   const [expanded, setExpanded] = useState(false);
-  const [loopMode, setLoopMode] = useState(true); // loop current song by default
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [fileError, setFileError] = useState(false);
 
   const audioRef = useRef(null);
-  const currentTrack = playlist[currentTrackIndex] || playlist[0];
+  // Daylight by Taylor Swift is the one and only song
+  const currentTrack = playlist[0] || {
+    id: "track-daylight",
+    title: "Daylight",
+    artist: "Taylor Swift",
+    type: "file",
+    src: "/audio/Taylor Swift - Daylight (Official Audio)(MP3_160K).mp3"
+  };
 
-  // Helper to resolve public/audio paths across development and static deployments
+  // Helper to resolve public/audio paths across development and production
   const resolveAudioSrc = (src) => {
     if (!src) return '';
     if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('blob:') || src.startsWith('data:')) {
       return src;
     }
-    // Strip accidental 'public/' prefix or multiple leading slashes
     const cleanPath = src.replace(/^public\//, '').replace(/^\/+/, '');
     const base = import.meta.env.BASE_URL || '/';
     const prefix = base.endsWith('/') ? base : `${base}/`;
@@ -60,60 +60,68 @@ export const AudioPlayer = () => {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // Handle HTMLAudio for file / url tracks
+  // Load the audio source once and initialize volume
   useEffect(() => {
     if (!audioRef.current) return;
     audioRef.current.volume = volume;
 
-    if (currentTrack?.type !== 'synth' && currentTrack?.src) {
-      const resolvedSrc = resolveAudioSrc(currentTrack.src);
-      audioRef.current.src = resolvedSrc;
-      setFileError(false);
-      setCurrentTime(0);
+    const targetSrc = resolveAudioSrc(currentTrack.src);
+    // Only update src if it differs to prevent reloading/restarting while already playing
+    if (!audioRef.current.src || !audioRef.current.src.endsWith(targetSrc)) {
+      audioRef.current.src = targetSrc;
+      audioRef.current.load();
+    }
 
-      if (musicPlaying) {
+    if (musicPlaying && audioRef.current.paused) {
+      audioRef.current.play().catch((err) => {
+        if (err.name !== 'NotAllowedError') {
+          console.warn('Audio playback error', err);
+        }
+      });
+    }
+  }, [currentTrack?.src]);
+
+  // Handle Play / Pause state changes
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.volume = volume;
+
+    if (musicPlaying) {
+      if (audioRef.current.paused) {
         audioRef.current.play().catch((err) => {
-          console.warn('Audio play prevented or file not found', err);
-          setFileError(true);
-          sound.startAmbientMusic();
+          if (err.name !== 'NotAllowedError') {
+            console.warn('Playback error', err);
+          }
         });
       }
     } else {
       audioRef.current.pause();
     }
-  }, [currentTrackIndex, currentTrack?.src, currentTrack?.type]);
+  }, [musicPlaying, volume]);
 
-  // Synchronize playing state with audio element
+  // Window interaction listener to ensure audio starts and never gets blocked
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
-      if (currentTrack?.type !== 'synth') {
-        if (musicPlaying && !fileError) {
-          audioRef.current.play().catch(() => setFileError(true));
-        } else {
-          audioRef.current.pause();
-        }
+    if (!musicPlaying) return;
+
+    const ensurePlaying = () => {
+      if (audioRef.current && audioRef.current.paused && musicPlaying) {
+        audioRef.current.play().catch(() => {});
       }
-    }
-  }, [musicPlaying, volume, fileError, currentTrack?.type]);
+    };
 
-  const handleNext = () => {
-    sound.playClick();
-    setFileError(false);
-    changeTrack(1);
-  };
+    window.addEventListener('click', ensurePlaying, { passive: true });
+    window.addEventListener('touchstart', ensurePlaying, { passive: true });
+    window.addEventListener('keydown', ensurePlaying, { passive: true });
 
-  const handlePrev = () => {
-    sound.playClick();
-    setFileError(false);
-    changeTrack(-1);
-  };
+    return () => {
+      window.removeEventListener('click', ensurePlaying);
+      window.removeEventListener('touchstart', ensurePlaying);
+      window.removeEventListener('keydown', ensurePlaying);
+    };
+  }, [musicPlaying]);
 
   const handleTogglePlay = () => {
     sound.playClick();
-    if (!musicPlaying) {
-      setFileError(false);
-    }
     toggleMusic();
   };
 
@@ -129,19 +137,22 @@ export const AudioPlayer = () => {
     <>
       <audio
         ref={audioRef}
-        loop={loopMode}
+        loop={true}
+        preload="auto"
         onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.target.duration)}
         onEnded={() => {
-          if (!loopMode) {
-            handleNext();
+          // Continuous loop guarantee: rewind and keep playing!
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(() => {});
           }
         }}
         onError={() => setFileError(true)}
       />
 
       <aside
-        aria-label="Music and Sound Controls"
+        aria-label="Soundtrack Controls"
         className="fixed bottom-4 right-4 z-40 transition-all duration-300 max-w-[calc(100vw-2rem)]"
       >
         {/* Compact Bar / Toggle */}
@@ -149,8 +160,8 @@ export const AudioPlayer = () => {
           <button
             onClick={handleTogglePlay}
             className="w-9 h-9 rounded-full bg-gradient-to-r from-[#941b36] via-[#b82e4f] to-[#ea9ab2] flex items-center justify-center text-white shadow-md shadow-[#b82e4f]/35 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-            title={musicPlaying ? "Pause Soundtrack" : "Play Romantic Soundtrack"}
-            aria-label={musicPlaying ? "Pause Soundtrack" : "Play Romantic Soundtrack"}
+            title={musicPlaying ? "Pause Daylight" : "Play Daylight"}
+            aria-label={musicPlaying ? "Pause Daylight" : "Play Daylight"}
           >
             {musicPlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white ml-0.5" />}
           </button>
@@ -159,17 +170,17 @@ export const AudioPlayer = () => {
           <button
             onClick={() => setExpanded(!expanded)}
             className="flex items-center gap-2 text-left cursor-pointer group"
-            title="Toggle Audio Controls & Playlist"
+            title="Toggle Soundtrack Controls"
           >
             <div className="flex flex-col max-w-[130px] sm:max-w-[180px] overflow-hidden">
-              <span className="text-xs font-semibold text-[#fce4ec] truncate group-hover:text-[#fae19c] transition-colors">
-                {currentTrack?.title}
+              <span className="text-xs font-semibold text-[#fce4ec] truncate group-hover:text-[#fae19c] transition-colors font-album">
+                Daylight
               </span>
               <span className="text-[10px] text-gray-400 truncate flex items-center gap-1">
                 {musicPlaying ? (
                   <span className="flex items-center gap-1 text-[#fae19c] font-mono">
                     <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#fae19c] animate-pulse" />
-                    {currentTrack?.type === 'synth' ? 'Dreamy Lo-Fi' : `${formatTime(currentTime)} / ${formatTime(duration)}`}
+                    {duration > 0 ? `${formatTime(currentTime)} / ${formatTime(duration)}` : 'Playing Endless Love'}
                   </span>
                 ) : (
                   'Soundtrack Paused'
@@ -197,36 +208,36 @@ export const AudioPlayer = () => {
 
         {/* Expanded Panel */}
         {expanded && (
-          <div className="glass-panel mt-2 p-4 rounded-3xl border border-[#ea9ab2]/35 shadow-2xl flex flex-col gap-3 min-w-[290px] sm:min-w-[340px] max-h-[85vh] overflow-y-auto animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="glass-panel mt-2 p-4 rounded-3xl border border-[#ea9ab2]/35 shadow-2xl flex flex-col gap-3 min-w-[280px] sm:min-w-[320px] max-h-[85vh] overflow-y-auto animate-in fade-in slide-in-from-bottom-2 duration-200">
             {/* Header */}
             <div className="flex items-center justify-between text-xs text-gray-400 border-b border-white/10 pb-2">
               <span className="flex items-center gap-1.5 font-bold text-[#fae19c] font-album text-sm">
                 <Music className="w-4 h-4 text-[#ea9ab2]" /> LOVE.EXE Soundtrack
               </span>
-              <span className="text-[10px] text-[#ea9ab2]/80 font-mono">
-                {playlist.length} {playlist.length === 1 ? 'Track' : 'Tracks'}
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#fae19c]/15 text-[#fae19c] font-mono font-semibold flex items-center gap-1">
+                <Repeat className="w-3 h-3 animate-spin" style={{ animationDuration: '8s' }} /> Endless Loop
               </span>
             </div>
 
-            {/* Notification if custom file fallback is used */}
-            {fileError && currentTrack?.type === 'file' && (
+            {/* Notification if file error */}
+            {fileError && (
               <div className="text-[11px] bg-[#1a0e28]/70 border border-[#ea9ab2]/30 text-[#f7d6e0] px-3 py-2 rounded-xl">
-                💡 Song file not found at <code className="text-[#fae19c]">{currentTrack?.src}</code>. Playing ambient synthesizer fallback!
+                💡 Daylight audio file not found at <code className="text-[#fae19c]">{currentTrack.src}</code>.
               </div>
             )}
 
-            {/* Track Info & Current Status */}
+            {/* Track Info */}
             <div className="text-center py-1">
-              <span className="text-base font-album font-bold text-white block truncate px-2">
-                {currentTrack?.title}
+              <span className="text-lg font-album font-bold text-white block truncate px-2">
+                Daylight
               </span>
               <span className="text-xs text-[#ea9ab2]/90 block truncate font-poetic text-sm">
-                {currentTrack?.artist}
+                Taylor Swift • Official Soundtrack
               </span>
             </div>
 
             {/* Audio Progress Scrubber */}
-            {currentTrack?.type !== 'synth' && duration > 0 && (
+            {duration > 0 && (
               <div className="space-y-1 px-1">
                 <input
                   type="range"
@@ -245,47 +256,19 @@ export const AudioPlayer = () => {
               </div>
             )}
 
-            {/* Controls */}
-            <div className="flex items-center justify-center gap-3 py-1">
-              <button
-                onClick={() => setLoopMode(!loopMode)}
-                className={`p-2 rounded-full transition-colors cursor-pointer ${
-                  loopMode ? 'text-[#fae19c] bg-[#fae19c]/15' : 'text-gray-400 hover:text-white'
-                }`}
-                title={loopMode ? "Looping Current Song" : "Playing Playlist in Order"}
-              >
-                <Repeat className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                onClick={handlePrev}
-                className="p-2 rounded-full hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer"
-                title="Previous Track"
-                aria-label="Previous Track"
-              >
-                <SkipBack className="w-4 h-4" />
-              </button>
-
+            {/* Controls (Big Play/Pause button) */}
+            <div className="flex items-center justify-center gap-4 py-1">
               <button
                 onClick={handleTogglePlay}
-                className="w-12 h-12 rounded-full bg-gradient-to-r from-[#941b36] via-[#b82e4f] to-[#ea9ab2] flex items-center justify-center text-white shadow-lg shadow-[#b82e4f]/35 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-                aria-label={musicPlaying ? "Pause" : "Play"}
+                className="w-14 h-14 rounded-full bg-gradient-to-r from-[#941b36] via-[#b82e4f] to-[#ea9ab2] flex items-center justify-center text-white shadow-xl shadow-[#b82e4f]/40 hover:scale-105 active:scale-95 transition-transform cursor-pointer border border-[#ea9ab2]/30"
+                aria-label={musicPlaying ? "Pause Daylight" : "Play Daylight"}
               >
-                {musicPlaying ? <Pause className="w-5 h-5 fill-white" /> : <Play className="w-5 h-5 fill-white ml-0.5" />}
-              </button>
-
-              <button
-                onClick={handleNext}
-                className="p-2 rounded-full hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer"
-                title="Next Track"
-                aria-label="Next Track"
-              >
-                <SkipForward className="w-4 h-4" />
+                {musicPlaying ? <Pause className="w-6 h-6 fill-white" /> : <Play className="w-6 h-6 fill-white ml-0.5" />}
               </button>
             </div>
 
             {/* Volume Slider */}
-            <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+            <div className="flex items-center gap-2 pt-2 border-t border-white/10">
               <button
                 onClick={() => setVolume(volume > 0 ? 0 : 0.7)}
                 className="text-gray-400 hover:text-white cursor-pointer"
@@ -309,55 +292,6 @@ export const AudioPlayer = () => {
                 {Math.round(volume * 100)}%
               </span>
             </div>
-
-            {/* Full Playlist View */}
-            {playlist.length > 1 && (
-              <div className="pt-2 border-t border-white/10">
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider font-mono block mb-2 flex items-center gap-1.5">
-                  <ListMusic className="w-3.5 h-3.5 text-[#ea9ab2]" /> Tracks ({playlist.length})
-                </span>
-                <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
-                  {playlist.map((track, idx) => {
-                    const isActive = currentTrackIndex === idx;
-                    return (
-                      <div
-                        key={track.id || idx}
-                        className={`p-2 rounded-xl text-xs flex items-center justify-between gap-2 transition-colors cursor-pointer ${
-                          isActive
-                            ? 'bg-[#b82e4f]/25 border border-[#ea9ab2]/40 text-[#fae19c]'
-                            : 'bg-white/[0.02] hover:bg-white/5 border border-transparent text-gray-300'
-                        }`}
-                        onClick={() => {
-                          sound.playClick();
-                          setFileError(false);
-                          selectTrack(idx);
-                        }}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          {isActive ? (
-                            <span className="w-2 h-2 rounded-full bg-[#fae19c] animate-ping flex-shrink-0" />
-                          ) : (
-                            <span className="text-[10px] text-gray-500 font-mono w-3.5 text-center flex-shrink-0">
-                              {idx + 1}
-                            </span>
-                          )}
-                          <div className="truncate">
-                            <span className="font-semibold block truncate">{track.title}</span>
-                            <span className="text-[10px] text-gray-400 block truncate font-poetic text-xs">{track.artist}</span>
-                          </div>
-                        </div>
-
-                        {isActive && (
-                          <span className="text-[10px] font-mono font-bold text-[#fae19c] flex-shrink-0">
-                            PLAYING
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </aside>
